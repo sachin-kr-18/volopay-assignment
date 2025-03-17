@@ -1,4 +1,3 @@
-// src/components/CompanyDetails.jsx
 import React from 'react';
 
 const CompanyDetails = ({ company }) => {

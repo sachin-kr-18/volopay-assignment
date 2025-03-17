@@ -1,4 +1,3 @@
-// src/pages/CompanyPage.jsx
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -10,11 +9,8 @@ const CompanyPage = () => {
   const { companyDetails, incomeStatement } = useSelector((state) => state.company);
 
   useEffect(() => {
-    // In a real app, we would fetch company data based on ticker
-    // For now, we're using the static IBM data
   }, [ticker]);
 
-  // Get the last 10 years of income data for the chart
   const chartData = incomeStatement.slice(0, 10).reverse();
 
   return (

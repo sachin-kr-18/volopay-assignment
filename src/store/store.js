@@ -1,4 +1,3 @@
-// src/store/store.js
 import { configureStore } from '@reduxjs/toolkit';
 import stocksReducer from './reducers/stocksSlice';
 import companyReducer from './reducers/companySlice';
@@ -10,6 +9,10 @@ export const store = configureStore({
     company: companyReducer,
     products: productsReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }),
 });
 
 export default store;

@@ -1,4 +1,3 @@
-// src/components/core/Table.jsx
 import React from 'react';
 
 const Table = ({ headers, data, onRowClick }) => {

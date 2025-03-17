@@ -1,45 +1,31 @@
-// src/pages/ProductsPage.jsx
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Table from '../components/core/Table';
-import Button from '../components/core/Button';
 import { 
-  setProducts, 
-  appendProducts, 
-  setCategories, 
+  fetchProducts, 
+  fetchProductsByCategory, 
+  fetchCategories,
   setSelectedCategory,
   incrementSkip,
-  setHasMore,
+  openModal
 } from '../store/reducers/productsSlice';
-
-// For demo, we'll use dummy categories
-const dummyCategories = [
-  "smartphones", "laptops", "fragrances", "skincare", "groceries"
-];
-
-// For demo, we'll use dummy products
-const dummyProducts = [
-  { id: 1, title: "iPhone 9", category: "smartphones", price: 549, rating: 4.69, stock: 94 },
-  { id: 2, title: "iPhone X", category: "smartphones", price: 899, rating: 4.44, stock: 34 },
-  { id: 3, title: "Samsung Universe 9", category: "smartphones", price: 1249, rating: 4.09, stock: 36 },
-  { id: 4, title: "MacBook Pro", category: "laptops", price: 1749, rating: 4.57, stock: 83 },
-  { id: 5, title: "Samsung Galaxy Book", category: "laptops", price: 1499, rating: 4.25, stock: 50 },
-  { id: 6, title: "Perfume Oil", category: "fragrances", price: 13, rating: 4.26, stock: 65 },
-  { id: 7, title: "Brown Perfume", category: "fragrances", price: 40, rating: 4.0, stock: 52 },
-  { id: 8, title: "Royal_Mirage Sport", category: "fragrances", price: 120, rating: 4.94, stock: 96 },
-  { id: 9, title: "Skin Beauty Cream", category: "skincare", price: 11, rating: 4.42, stock: 78 },
-  { id: 10, title: "Plant Hanger", category: "home-decoration", price: 41, rating: 4.08, stock: 131 },
-];
+import ProductModal from '../components/ProductModal';
 
 const ProductsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { products, categories, selectedCategory, pagination } = useSelector((state) => state.products);
+  const { 
+    products, 
+    categories, 
+    selectedCategory, 
+    pagination, 
+    loading, 
+    modalOpen 
+  } = useSelector((state) => state.products);
+
   const observer = useRef();
-  
-  // Parse query parameters
+
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const category = searchParams.get('category');
@@ -47,107 +33,170 @@ const ProductsPage = () => {
       dispatch(setSelectedCategory(category));
     }
   }, [location.search, dispatch]);
-  
-  // Load initial data
+
   useEffect(() => {
-    // In a real app, we would fetch categories and products from API
-    dispatch(setCategories(dummyCategories));
-    
-    const filteredProducts = selectedCategory
-      ? dummyProducts.filter(p => p.category === selectedCategory)
-      : dummyProducts;
-      
-    dispatch(setProducts(filteredProducts));
-  }, [dispatch, selectedCategory]);
-  
-  const lastElementRef = useCallback(node => {
+    dispatch(fetchCategories());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      dispatch(fetchProductsByCategory({ 
+        category: selectedCategory, 
+        limit: pagination.limit, 
+        skip: pagination.skip 
+      }));
+    } else {
+      dispatch(fetchProducts({ 
+        limit: pagination.limit, 
+        skip: pagination.skip 
+      }));
+    }
+  }, [dispatch, selectedCategory, pagination.skip, pagination.limit]);
+
+  const lastProductRef = useCallback(node => {
+    if (loading) return;
     if (observer.current) observer.current.disconnect();
     
     observer.current = new IntersectionObserver(entries => {
       if (entries[0].isIntersecting && pagination.hasMore) {
-        // In a real app, this would load more products
         dispatch(incrementSkip());
-        
-        // Simulating loading more products
-        setTimeout(() => {
-          if (pagination.skip > 30) {
-            dispatch(setHasMore(false));
-          } else {
-            dispatch(appendProducts(dummyProducts.slice(0, 5)));
-          }
-        }, 500);
       }
     });
     
     if (node) observer.current.observe(node);
-  }, [pagination.hasMore, pagination.skip, dispatch]);
-  
+  }, [loading, pagination.hasMore, dispatch]);
+
   const handleCategoryClick = (category) => {
-    navigate(`/products?category=${category}`);
+    if (category === selectedCategory) {
+      navigate('/products');
+      dispatch(setSelectedCategory(null));
+    } else {
+      navigate(`/products?category=${category}`);
+      dispatch(setSelectedCategory(category));
+    }
   };
-  
-  const headers = ['Product Name', 'Category', 'Price', 'Rating', 'Stock'];
+
+  const handleAddNewClick = () => {
+    dispatch(openModal(null));
+  };
 
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold text-center mb-6">Products Page</h1>
+      
       <div className="flex justify-between mb-4">
         <a href="/" className="text-blue-500 hover:underline">← Back to Stocks</a>
+        <button 
+          onClick={handleAddNewClick}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Add Item +
+        </button>
       </div>
       
       <div className="mb-6">
         <h2 className="text-lg font-semibold mb-2">Categories</h2>
         <div className="flex flex-wrap">
-          <Button 
-            active={selectedCategory === null}
-            onClick={() => navigate('/products')}
+          <button 
+            className={`px-4 py-2 rounded-md mr-2 mb-2 ${
+              selectedCategory === null 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+            onClick={() => handleCategoryClick(null)}
           >
-            All
-          </Button>
-          {categories.map((category) => (
-            <Button 
+            Reset
+          </button>
+          
+          {categories.slice(0, 5).map((category) => (
+            <button 
               key={category}
-              active={selectedCategory === category}
+              className={`px-4 py-2 rounded-md mr-2 mb-2 ${
+                selectedCategory === category 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
               onClick={() => handleCategoryClick(category)}
             >
-              {category.charAt(0).toUpperCase() + category.slice(1)}
-            </Button>
+              {typeof category === 'string' ? category.charAt(0).toUpperCase() + category.slice(1) : ''}
+            </button>
           ))}
         </div>
       </div>
       
-      <div className="bg-white rounded-lg shadow">
-        <table className="min-w-full">
-          <thead className="bg-gray-100">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              {headers.map((header, index) => (
-                <th key={index} className="py-3 px-4 text-left text-gray-700">{header}</th>
-              ))}
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Product Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Category
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Price
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Rating
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Stock
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Action
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="bg-white divide-y divide-gray-200">
             {products.map((product, index) => (
               <tr 
                 key={product.id} 
-                className="border-b hover:bg-gray-50"
-                ref={index === products.length - 1 ? lastElementRef : null}
+                ref={index === products.length - 1 ? lastProductRef : null}
+                className="hover:bg-gray-50"
               >
-                <td className="py-3 px-4">{product.title}</td>
-                <td className="py-3 px-4">{product.category}</td>
-                <td className="py-3 px-4">${product.price}</td>
-                <td className="py-3 px-4">{product.rating}</td>
-                <td className="py-3 px-4">{product.stock}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm font-medium text-gray-900">{product.title}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">{product.category}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">${product.price}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">{product.rating}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-500">{product.stock}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <button 
+                    onClick={() => dispatch(openModal(product))}
+                    className="text-indigo-600 hover:text-indigo-900"
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
         
-        {pagination.hasMore && (
+        {loading && (
           <div className="p-4 text-center text-gray-500">
-            Loading more products...
+            Loading products...
+          </div>
+        )}
+        
+        {!loading && products.length === 0 && (
+          <div className="p-4 text-center text-gray-500">
+            No products found.
           </div>
         )}
       </div>
+      
+      {modalOpen && <ProductModal />}
     </div>
   );
 };
