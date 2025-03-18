@@ -1,4 +1,3 @@
-// src/store/reducers/stocksSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 import stockData from '../../data/gainers.json';
 

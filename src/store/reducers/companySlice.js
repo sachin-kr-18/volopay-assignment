@@ -1,4 +1,3 @@
-// src/store/reducers/companySlice.js
 import { createSlice } from '@reduxjs/toolkit';
 import ibmData from '../../data/ibm.json';
 

@@ -1,4 +1,3 @@
-// src/pages/HomePage.jsx
 import React from 'react';
 import { useSelector } from 'react-redux';
 import StockTable from '../components/StockTable';
